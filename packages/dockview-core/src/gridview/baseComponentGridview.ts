@@ -44,10 +44,20 @@ export type LayoutChangeKind =
     | 'popoutSize';
 
 /**
+ * Represents a single layout change with its associated entity.
+ */
+export interface LayoutChange {
+    readonly kind: LayoutChangeKind;
+    readonly panelId?: string;
+    readonly groupId?: string;
+}
+
+/**
  * Event fired when the layout changes.
  *
- * The `kind` property is a Set containing all the types of changes that occurred.
- * Multiple kinds may be present if several changes were batched in the same microtask.
+ * Multiple changes may be batched in the same microtask. The `kind` property
+ * provides a quick way to check what types of changes occurred, while `changes`
+ * preserves the full detail of each individual change.
  */
 export interface LayoutChangeEvent {
     /**
@@ -56,19 +66,14 @@ export interface LayoutChangeEvent {
      */
     readonly kind: ReadonlySet<LayoutChangeKind>;
     /**
-     * IDs of panels affected by this change.
-     * Present for panel-related changes: addPanel, removePanel, activePanel, movePanel, panelTitle, panelParameters.
+     * Individual changes that occurred, preserving the association
+     * between each change kind and its affected panel/group.
      */
-    readonly panelIds?: ReadonlySet<string>;
-    /**
-     * IDs of groups affected by this change.
-     * Present for group-related changes: addGroup, removeGroup, activeGroup.
-     */
-    readonly groupIds?: ReadonlySet<string>;
+    readonly changes: ReadonlyArray<LayoutChange>;
 }
 
 /**
- * Helper function to merge layout change events by combining their kinds and affected entities.
+ * Helper function to merge layout change events by combining their changes.
  */
 export function mergeLayoutChangeEvents(
     existing: LayoutChangeEvent,
@@ -79,45 +84,14 @@ export function mergeLayoutChangeEvents(
         combinedKinds.add(kind);
     }
 
-    let combinedPanelIds: Set<string> | undefined;
-    if (existing.panelIds || incoming.panelIds) {
-        combinedPanelIds = new Set<string>();
-        if (existing.panelIds) {
-            for (const id of existing.panelIds) {
-                combinedPanelIds.add(id);
-            }
-        }
-        if (incoming.panelIds) {
-            for (const id of incoming.panelIds) {
-                combinedPanelIds.add(id);
-            }
-        }
-    }
-
-    let combinedGroupIds: Set<string> | undefined;
-    if (existing.groupIds || incoming.groupIds) {
-        combinedGroupIds = new Set<string>();
-        if (existing.groupIds) {
-            for (const id of existing.groupIds) {
-                combinedGroupIds.add(id);
-            }
-        }
-        if (incoming.groupIds) {
-            for (const id of incoming.groupIds) {
-                combinedGroupIds.add(id);
-            }
-        }
-    }
-
     return {
         kind: combinedKinds,
-        panelIds: combinedPanelIds,
-        groupIds: combinedGroupIds,
+        changes: [...existing.changes, ...incoming.changes],
     };
 }
 
 /**
- * Helper function to create a layout change event with the given kind(s) and optional details.
+ * Helper function to create a layout change event with the given kind and optional details.
  */
 export function createLayoutChangeEvent(
     kind: LayoutChangeKind,
@@ -125,8 +99,13 @@ export function createLayoutChangeEvent(
 ): LayoutChangeEvent {
     return {
         kind: new Set([kind]),
-        panelIds: options?.panelId ? new Set([options.panelId]) : undefined,
-        groupIds: options?.groupId ? new Set([options.groupId]) : undefined,
+        changes: [
+            {
+                kind,
+                panelId: options?.panelId,
+                groupId: options?.groupId,
+            },
+        ],
     };
 }
 

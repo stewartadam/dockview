@@ -6919,9 +6919,15 @@ describe('dockviewComponent', () => {
             const event = didLayoutChangeHandler.mock.calls[0][0];
             expect(event.kind.has('addPanel')).toBe(true);
             expect(event.kind.has('addGroup')).toBe(true);
-            // Verify panelIds and groupIds are populated
-            expect(event.panelIds?.has('panel_1')).toBe(true);
-            expect(event.groupIds?.size).toBeGreaterThan(0);
+            // Verify changes array contains the panel and group info
+            const addPanelChange = event.changes.find(
+                (c: any) => c.kind === 'addPanel'
+            );
+            expect(addPanelChange?.panelId).toBe('panel_1');
+            const addGroupChange = event.changes.find(
+                (c: any) => c.kind === 'addGroup'
+            );
+            expect(addGroupChange?.groupId).toBeDefined();
         });
 
         test('that LayoutChangeEvent.kind includes correct type for removePanel', () => {
@@ -6942,8 +6948,11 @@ describe('dockviewComponent', () => {
             expect(didLayoutChangeHandler).toHaveBeenCalledTimes(1);
             const event = didLayoutChangeHandler.mock.calls[0][0];
             expect(event.kind.has('removePanel')).toBe(true);
-            // Verify panelIds includes the removed panel
-            expect(event.panelIds?.has('panel_1')).toBe(true);
+            // Verify changes array includes the removed panel
+            const removePanelChange = event.changes.find(
+                (c: any) => c.kind === 'removePanel'
+            );
+            expect(removePanelChange?.panelId).toBe('panel_1');
         });
 
         test('that LayoutChangeEvent.kind includes correct type for activePanel change', () => {
@@ -6974,8 +6983,11 @@ describe('dockviewComponent', () => {
             expect(didLayoutChangeHandler).toHaveBeenCalledTimes(1);
             const event = didLayoutChangeHandler.mock.calls[0][0];
             expect(event.kind.has('activePanel')).toBe(true);
-            // Verify panelIds includes the newly activated panel
-            expect(event.panelIds?.has('panel_2')).toBe(true);
+            // Verify changes array includes the newly activated panel
+            const activePanelChange = event.changes.find(
+                (c: any) => c.kind === 'activePanel'
+            );
+            expect(activePanelChange?.panelId).toBe('panel_2');
         });
 
         test('that LayoutChangeEvent.kind includes panelTitle for title changes', () => {
