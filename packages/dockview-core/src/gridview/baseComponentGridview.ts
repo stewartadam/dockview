@@ -55,29 +55,79 @@ export interface LayoutChangeEvent {
      * Use `.has()` to check for specific kinds, e.g., `event.kind.has('activePanel')`.
      */
     readonly kind: ReadonlySet<LayoutChangeKind>;
+    /**
+     * IDs of panels affected by this change.
+     * Present for panel-related changes: addPanel, removePanel, activePanel, movePanel, panelTitle, panelParameters.
+     */
+    readonly panelIds?: ReadonlySet<string>;
+    /**
+     * IDs of groups affected by this change.
+     * Present for group-related changes: addGroup, removeGroup, activeGroup.
+     */
+    readonly groupIds?: ReadonlySet<string>;
 }
 
 /**
- * Helper function to merge layout change events by combining their kinds.
+ * Helper function to merge layout change events by combining their kinds and affected entities.
  */
 export function mergeLayoutChangeEvents(
     existing: LayoutChangeEvent,
     incoming: LayoutChangeEvent
 ): LayoutChangeEvent {
-    const combined = new Set<LayoutChangeKind>(existing.kind);
+    const combinedKinds = new Set<LayoutChangeKind>(existing.kind);
     for (const kind of incoming.kind) {
-        combined.add(kind);
+        combinedKinds.add(kind);
     }
-    return { kind: combined };
+
+    let combinedPanelIds: Set<string> | undefined;
+    if (existing.panelIds || incoming.panelIds) {
+        combinedPanelIds = new Set<string>();
+        if (existing.panelIds) {
+            for (const id of existing.panelIds) {
+                combinedPanelIds.add(id);
+            }
+        }
+        if (incoming.panelIds) {
+            for (const id of incoming.panelIds) {
+                combinedPanelIds.add(id);
+            }
+        }
+    }
+
+    let combinedGroupIds: Set<string> | undefined;
+    if (existing.groupIds || incoming.groupIds) {
+        combinedGroupIds = new Set<string>();
+        if (existing.groupIds) {
+            for (const id of existing.groupIds) {
+                combinedGroupIds.add(id);
+            }
+        }
+        if (incoming.groupIds) {
+            for (const id of incoming.groupIds) {
+                combinedGroupIds.add(id);
+            }
+        }
+    }
+
+    return {
+        kind: combinedKinds,
+        panelIds: combinedPanelIds,
+        groupIds: combinedGroupIds,
+    };
 }
 
 /**
- * Helper function to create a layout change event with the given kind(s).
+ * Helper function to create a layout change event with the given kind(s) and optional details.
  */
 export function createLayoutChangeEvent(
-    ...kinds: LayoutChangeKind[]
+    kind: LayoutChangeKind,
+    options?: { panelId?: string; groupId?: string }
 ): LayoutChangeEvent {
-    return { kind: new Set(kinds) };
+    return {
+        kind: new Set([kind]),
+        panelIds: options?.panelId ? new Set([options.panelId]) : undefined,
+        groupIds: options?.groupId ? new Set([options.groupId]) : undefined,
+    };
 }
 
 /**
@@ -275,19 +325,21 @@ export abstract class BaseGrid<T extends IGridPanelView>
                     createLayoutChangeEvent('resize')
                 );
             }),
-            this.onDidAdd(() => {
+            this.onDidAdd((group) => {
                 this._bufferOnDidLayoutChange.fire(
-                    createLayoutChangeEvent('addGroup')
+                    createLayoutChangeEvent('addGroup', { groupId: group.id })
                 );
             }),
-            this.onDidRemove(() => {
+            this.onDidRemove((group) => {
                 this._bufferOnDidLayoutChange.fire(
-                    createLayoutChangeEvent('removeGroup')
+                    createLayoutChangeEvent('removeGroup', { groupId: group.id })
                 );
             }),
-            this.onDidActiveChange(() => {
+            this.onDidActiveChange((group) => {
                 this._bufferOnDidLayoutChange.fire(
-                    createLayoutChangeEvent('activeGroup')
+                    createLayoutChangeEvent('activeGroup', {
+                        groupId: group?.id,
+                    })
                 );
             }),
             this._onDidMaximizedChange,

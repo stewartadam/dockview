@@ -6919,6 +6919,9 @@ describe('dockviewComponent', () => {
             const event = didLayoutChangeHandler.mock.calls[0][0];
             expect(event.kind.has('addPanel')).toBe(true);
             expect(event.kind.has('addGroup')).toBe(true);
+            // Verify panelIds and groupIds are populated
+            expect(event.panelIds?.has('panel_1')).toBe(true);
+            expect(event.groupIds?.size).toBeGreaterThan(0);
         });
 
         test('that LayoutChangeEvent.kind includes correct type for removePanel', () => {
@@ -6939,6 +6942,8 @@ describe('dockviewComponent', () => {
             expect(didLayoutChangeHandler).toHaveBeenCalledTimes(1);
             const event = didLayoutChangeHandler.mock.calls[0][0];
             expect(event.kind.has('removePanel')).toBe(true);
+            // Verify panelIds includes the removed panel
+            expect(event.panelIds?.has('panel_1')).toBe(true);
         });
 
         test('that LayoutChangeEvent.kind includes correct type for activePanel change', () => {
@@ -6969,6 +6974,8 @@ describe('dockviewComponent', () => {
             expect(didLayoutChangeHandler).toHaveBeenCalledTimes(1);
             const event = didLayoutChangeHandler.mock.calls[0][0];
             expect(event.kind.has('activePanel')).toBe(true);
+            // Verify panelIds includes the newly activated panel
+            expect(event.panelIds?.has('panel_2')).toBe(true);
         });
 
         test('that LayoutChangeEvent.kind includes panelTitle for title changes', () => {

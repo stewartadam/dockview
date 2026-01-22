@@ -565,44 +565,52 @@ export class DockviewComponent
             )(() => {
                 this.updateWatermark();
             }),
-            this.onDidAddPanel(() => {
+            this.onDidAddPanel((panel) => {
                 this._bufferOnDidLayoutChange.fire(
-                    createLayoutChangeEvent('addPanel')
+                    createLayoutChangeEvent('addPanel', { panelId: panel.id })
                 );
             }),
-            this.onDidRemovePanel(() => {
+            this.onDidRemovePanel((panel) => {
                 this._bufferOnDidLayoutChange.fire(
-                    createLayoutChangeEvent('removePanel')
+                    createLayoutChangeEvent('removePanel', { panelId: panel.id })
                 );
             }),
-            this.onDidAddGroup(() => {
+            this.onDidAddGroup((group) => {
                 this._bufferOnDidLayoutChange.fire(
-                    createLayoutChangeEvent('addGroup')
+                    createLayoutChangeEvent('addGroup', { groupId: group.id })
                 );
             }),
-            this.onDidRemove(() => {
+            this.onDidRemove((group) => {
                 this._bufferOnDidLayoutChange.fire(
-                    createLayoutChangeEvent('removeGroup')
+                    createLayoutChangeEvent('removeGroup', { groupId: group.id })
                 );
             }),
-            this.onDidMovePanel(() => {
+            this.onDidMovePanel((event) => {
                 this._bufferOnDidLayoutChange.fire(
-                    createLayoutChangeEvent('movePanel')
+                    createLayoutChangeEvent('movePanel', {
+                        panelId: event.panel.id,
+                    })
                 );
             }),
-            this.onDidActivePanelChange(() => {
+            this.onDidActivePanelChange((panel) => {
                 this._bufferOnDidLayoutChange.fire(
-                    createLayoutChangeEvent('activePanel')
+                    createLayoutChangeEvent('activePanel', {
+                        panelId: panel?.id,
+                    })
                 );
             }),
-            this.onDidPopoutGroupPositionChange(() => {
+            this.onDidPopoutGroupPositionChange((event) => {
                 this._bufferOnDidLayoutChange.fire(
-                    createLayoutChangeEvent('popoutPosition')
+                    createLayoutChangeEvent('popoutPosition', {
+                        groupId: event.group.id,
+                    })
                 );
             }),
-            this.onDidPopoutGroupSizeChange(() => {
+            this.onDidPopoutGroupSizeChange((event) => {
                 this._bufferOnDidLayoutChange.fire(
-                    createLayoutChangeEvent('popoutSize')
+                    createLayoutChangeEvent('popoutSize', {
+                        groupId: event.group.id,
+                    })
                 );
             }),
             Disposable.from(() => {
@@ -1223,7 +1231,9 @@ export class DockviewComponent
             }),
             overlay.onDidChangeEnd(() => {
                 this._bufferOnDidLayoutChange.fire(
-                    createLayoutChangeEvent('floatingPosition')
+                    createLayoutChangeEvent('floatingPosition', {
+                        groupId: group.id,
+                    })
                 );
             }),
             group.onDidChange((event) => {
