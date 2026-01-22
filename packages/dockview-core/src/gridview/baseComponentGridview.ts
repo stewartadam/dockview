@@ -134,12 +134,6 @@ export interface IBaseGrid<T extends IGridPanelView> extends IDisposable {
     readonly size: number;
     readonly groups: T[];
     readonly onDidMaximizedChange: Event<MaximizedChanged<T>>;
-    /**
-     * Invoked when any layout change occurs.
-     *
-     * The event contains a `kind` property indicating what type(s) of change occurred,
-     * allowing subscribers to filter which changes they care about.
-     */
     readonly onDidLayoutChange: Event<LayoutChangeEvent>;
     getPanel(id: string): T | undefined;
     toJSON(): object;
