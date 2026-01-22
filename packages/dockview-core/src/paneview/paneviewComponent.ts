@@ -1,6 +1,10 @@
 import { PaneviewApi } from '../api/component.api';
 import { Emitter, Event } from '../events';
 import {
+    LayoutChangeEvent,
+    createLayoutChangeEvent,
+} from '../gridview/baseComponentGridview';
+import {
     CompositeDisposable,
     IDisposable,
     MutableDisposable,
@@ -112,7 +116,7 @@ export interface IPaneviewComponent extends IDisposable {
     readonly onDidAddView: Event<PaneviewPanel>;
     readonly onDidRemoveView: Event<PaneviewPanel>;
     readonly onDidDrop: Event<PaneviewDidDropEvent>;
-    readonly onDidLayoutChange: Event<void>;
+    readonly onDidLayoutChange: Event<LayoutChangeEvent>;
     readonly onDidLayoutFromJSON: Event<void>;
     readonly onUnhandledDragOverEvent: Event<PaneviewDndOverlayEvent>;
     addPanel<T extends object = Parameters>(
@@ -140,8 +144,9 @@ export class PaneviewComponent extends Resizable implements IPaneviewComponent {
     private readonly _onDidLayoutfromJSON = new Emitter<void>();
     readonly onDidLayoutFromJSON: Event<void> = this._onDidLayoutfromJSON.event;
 
-    private readonly _onDidLayoutChange = new Emitter<void>();
-    readonly onDidLayoutChange: Event<void> = this._onDidLayoutChange.event;
+    private readonly _onDidLayoutChange = new Emitter<LayoutChangeEvent>();
+    readonly onDidLayoutChange: Event<LayoutChangeEvent> =
+        this._onDidLayoutChange.event;
 
     private readonly _onDidDrop = new Emitter<PaneviewDidDropEvent>();
     readonly onDidDrop: Event<PaneviewDidDropEvent> = this._onDidDrop.event;
@@ -172,7 +177,7 @@ export class PaneviewComponent extends Resizable implements IPaneviewComponent {
 
         this._disposable.value = new CompositeDisposable(
             this._paneview.onDidChange(() => {
-                this._onDidLayoutChange.fire(undefined);
+                this._onDidLayoutChange.fire(createLayoutChangeEvent('resize'));
             }),
             this._paneview.onDidAddView((e) => this._onDidAddView.fire(e)),
             this._paneview.onDidRemoveView((e) => this._onDidRemoveView.fire(e))

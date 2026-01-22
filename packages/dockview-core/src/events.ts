@@ -241,43 +241,68 @@ export function addDisposableListener<
  * @see https://developer.mozilla.org/en-US/docs/Web/API/queueMicrotask
  * @see https://rxjs.dev/api/index/const/asapScheduler
  */
-export class AsapEvent implements IDisposable {
-    private readonly _onFired = new Emitter<void>();
+export class AsapEvent<T = void> implements IDisposable {
+    private readonly _onFired: Emitter<T>;
     private _currentFireCount = 0;
     private _queued = false;
+    private _pendingValue: T | undefined;
+    private readonly _merge?: (existing: T, incoming: T) => T;
 
-    readonly onEvent: Event<void> = (e) => {
-        /**
-         * when the event is first subscribed to take note of the current fire count
-         */
-        const fireCountAtTimeOfEventSubscription = this._currentFireCount;
+    readonly onEvent: Event<T>;
 
-        return this._onFired.event(() => {
+    /**
+     * @param options.merge - Optional function to merge multiple values fired within the same microtask.
+     * If not provided, the last value wins.
+     */
+    constructor(options?: { merge?: (existing: T, incoming: T) => T }) {
+        this._merge = options?.merge;
+        this._onFired = new Emitter<T>();
+        this.onEvent = (callback: (e: T) => void): IDisposable => {
             /**
-             * if the current fire count is greater than the fire count at event subscription
-             * then the event has been fired since we subscribed and it's ok to "on_next" the event.
-             *
-             * if the count is not greater then what we are recieving is an event from the microtask
-             * queue that was triggered before we actually subscribed and therfore we should ignore it.
+             * when the event is first subscribed to take note of the current fire count
              */
-            if (this._currentFireCount > fireCountAtTimeOfEventSubscription) {
-                e();
-            }
-        });
-    };
+            const fireCountAtTimeOfEventSubscription = this._currentFireCount;
 
-    fire(): void {
+            return this._onFired.event((value: T) => {
+                /**
+                 * if the current fire count is greater than the fire count at event subscription
+                 * then the event has been fired since we subscribed and it's ok to "on_next" the event.
+                 *
+                 * if the count is not greater then what we are recieving is an event from the microtask
+                 * queue that was triggered before we actually subscribed and therfore we should ignore it.
+                 */
+                if (this._currentFireCount > fireCountAtTimeOfEventSubscription) {
+                    callback(value);
+                }
+            });
+        };
+    }
+
+    fire(value?: T): void {
         this._currentFireCount++;
 
         if (this._queued) {
+            // Merge with pending value if we have a merge function
+            if (
+                this._merge &&
+                this._pendingValue !== undefined &&
+                value !== undefined
+            ) {
+                this._pendingValue = this._merge(this._pendingValue, value);
+            } else if (value !== undefined) {
+                this._pendingValue = value;
+            }
             return;
         }
 
+        this._pendingValue = value;
         this._queued = true;
 
         queueMicrotask(() => {
             this._queued = false;
-            this._onFired.fire();
+            const valueToFire = this._pendingValue;
+            this._pendingValue = undefined;
+            this._onFired.fire(valueToFire as T);
         });
     }
 

@@ -6903,6 +6903,156 @@ describe('dockviewComponent', () => {
 
             disposeDidLayoutChangeHandler();
         });
+
+        test('that LayoutChangeEvent.kind includes correct type for addPanel', () => {
+            const didLayoutChangeHandler = jest.fn();
+            dockview.onDidLayoutChange(didLayoutChangeHandler);
+
+            dockview.addPanel({
+                id: 'panel_1',
+                component: 'default',
+            });
+
+            jest.runAllTimers();
+
+            expect(didLayoutChangeHandler).toHaveBeenCalledTimes(1);
+            const event = didLayoutChangeHandler.mock.calls[0][0];
+            expect(event.kind.has('addPanel')).toBe(true);
+            expect(event.kind.has('addGroup')).toBe(true);
+            // Verify changes array contains the panel and group info
+            const addPanelChange = event.changes.find(
+                (c: any) => c.kind === 'addPanel'
+            );
+            expect(addPanelChange?.panelId).toBe('panel_1');
+            const addGroupChange = event.changes.find(
+                (c: any) => c.kind === 'addGroup'
+            );
+            expect(addGroupChange?.groupId).toBeDefined();
+        });
+
+        test('that LayoutChangeEvent.kind includes correct type for removePanel', () => {
+            const panel1 = dockview.addPanel({
+                id: 'panel_1',
+                component: 'default',
+            });
+
+            jest.runAllTimers();
+
+            const didLayoutChangeHandler = jest.fn();
+            dockview.onDidLayoutChange(didLayoutChangeHandler);
+
+            dockview.removePanel(panel1);
+
+            jest.runAllTimers();
+
+            expect(didLayoutChangeHandler).toHaveBeenCalledTimes(1);
+            const event = didLayoutChangeHandler.mock.calls[0][0];
+            expect(event.kind.has('removePanel')).toBe(true);
+            // Verify changes array includes the removed panel
+            const removePanelChange = event.changes.find(
+                (c: any) => c.kind === 'removePanel'
+            );
+            expect(removePanelChange?.panelId).toBe('panel_1');
+        });
+
+        test('that LayoutChangeEvent.kind includes correct type for activePanel change', () => {
+            const panel1 = dockview.addPanel({
+                id: 'panel_1',
+                component: 'default',
+            });
+            const panel2 = dockview.addPanel({
+                id: 'panel_2',
+                component: 'default',
+                position: { referenceGroup: panel1.group },
+            });
+
+            jest.runAllTimers();
+
+            // Ensure panel1 is active first
+            panel1.api.setActive();
+            jest.runAllTimers();
+
+            const didLayoutChangeHandler = jest.fn();
+            dockview.onDidLayoutChange(didLayoutChangeHandler);
+
+            // Now switch to panel2
+            panel2.api.setActive();
+
+            jest.runAllTimers();
+
+            expect(didLayoutChangeHandler).toHaveBeenCalledTimes(1);
+            const event = didLayoutChangeHandler.mock.calls[0][0];
+            expect(event.kind.has('activePanel')).toBe(true);
+            // Verify changes array includes the newly activated panel
+            const activePanelChange = event.changes.find(
+                (c: any) => c.kind === 'activePanel'
+            );
+            expect(activePanelChange?.panelId).toBe('panel_2');
+        });
+
+        test('that LayoutChangeEvent.kind includes panelTitle for title changes', () => {
+            const panel1 = dockview.addPanel({
+                id: 'panel_1',
+                component: 'default',
+            });
+
+            jest.runAllTimers();
+
+            const didLayoutChangeHandler = jest.fn();
+            dockview.onDidLayoutChange(didLayoutChangeHandler);
+
+            panel1.setTitle('new title');
+
+            jest.runAllTimers();
+
+            expect(didLayoutChangeHandler).toHaveBeenCalledTimes(1);
+            const event = didLayoutChangeHandler.mock.calls[0][0];
+            expect(event.kind.has('panelTitle')).toBe(true);
+        });
+
+        test('that LayoutChangeEvent.kind includes panelParameters for parameter changes', () => {
+            const panel1 = dockview.addPanel({
+                id: 'panel_1',
+                component: 'default',
+            });
+
+            jest.runAllTimers();
+
+            const didLayoutChangeHandler = jest.fn();
+            dockview.onDidLayoutChange(didLayoutChangeHandler);
+
+            panel1.api.updateParameters({ keyA: 'valueA' });
+
+            jest.runAllTimers();
+
+            expect(didLayoutChangeHandler).toHaveBeenCalledTimes(1);
+            const event = didLayoutChangeHandler.mock.calls[0][0];
+            expect(event.kind.has('panelParameters')).toBe(true);
+        });
+
+        test('that multiple changes in same microtask are merged into single event with all kinds', () => {
+            const panel1 = dockview.addPanel({
+                id: 'panel_1',
+                component: 'default',
+            });
+
+            jest.runAllTimers();
+
+            const didLayoutChangeHandler = jest.fn();
+            dockview.onDidLayoutChange(didLayoutChangeHandler);
+
+            // Make multiple changes in same microtask
+            panel1.setTitle('new title');
+            panel1.api.updateParameters({ keyA: 'valueA' });
+
+            jest.runAllTimers();
+
+            // Should only fire once with both kinds
+            expect(didLayoutChangeHandler).toHaveBeenCalledTimes(1);
+            const event = didLayoutChangeHandler.mock.calls[0][0];
+            expect(event.kind.has('panelTitle')).toBe(true);
+            expect(event.kind.has('panelParameters')).toBe(true);
+        });
     });
 
     describe('panel visibility', () => {
