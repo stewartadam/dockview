@@ -37,6 +37,7 @@ import {
     Direction,
     IBaseGrid,
     toTarget,
+    createLayoutChangeEvent,
 } from '../gridview/baseComponentGridview';
 import { DockviewApi } from '../api/component.api';
 import { Orientation } from '../splitview/splitview';
@@ -564,17 +565,45 @@ export class DockviewComponent
             )(() => {
                 this.updateWatermark();
             }),
-            Event.any<unknown>(
-                this.onDidAddPanel,
-                this.onDidRemovePanel,
-                this.onDidAddGroup,
-                this.onDidRemove,
-                this.onDidMovePanel,
-                this.onDidActivePanelChange,
-                this.onDidPopoutGroupPositionChange,
-                this.onDidPopoutGroupSizeChange
-            )(() => {
-                this._bufferOnDidLayoutChange.fire();
+            this.onDidAddPanel(() => {
+                this._bufferOnDidLayoutChange.fire(
+                    createLayoutChangeEvent('addPanel')
+                );
+            }),
+            this.onDidRemovePanel(() => {
+                this._bufferOnDidLayoutChange.fire(
+                    createLayoutChangeEvent('removePanel')
+                );
+            }),
+            this.onDidAddGroup(() => {
+                this._bufferOnDidLayoutChange.fire(
+                    createLayoutChangeEvent('addGroup')
+                );
+            }),
+            this.onDidRemove(() => {
+                this._bufferOnDidLayoutChange.fire(
+                    createLayoutChangeEvent('removeGroup')
+                );
+            }),
+            this.onDidMovePanel(() => {
+                this._bufferOnDidLayoutChange.fire(
+                    createLayoutChangeEvent('movePanel')
+                );
+            }),
+            this.onDidActivePanelChange(() => {
+                this._bufferOnDidLayoutChange.fire(
+                    createLayoutChangeEvent('activePanel')
+                );
+            }),
+            this.onDidPopoutGroupPositionChange(() => {
+                this._bufferOnDidLayoutChange.fire(
+                    createLayoutChangeEvent('popoutPosition')
+                );
+            }),
+            this.onDidPopoutGroupSizeChange(() => {
+                this._bufferOnDidLayoutChange.fire(
+                    createLayoutChangeEvent('popoutSize')
+                );
             }),
             Disposable.from(() => {
                 // iterate over a copy of the array since .dispose() mutates the original array
@@ -1193,7 +1222,9 @@ export class DockviewComponent
                 group.layout(group.width, group.height);
             }),
             overlay.onDidChangeEnd(() => {
-                this._bufferOnDidLayoutChange.fire();
+                this._bufferOnDidLayoutChange.fire(
+                    createLayoutChangeEvent('floatingPosition')
+                );
             }),
             group.onDidChange((event) => {
                 overlay.setBounds({
@@ -2778,11 +2809,15 @@ export class DockviewComponent
                         this._onDidActivePanelChange.fire(event.panel);
                     }
                 }),
-                Event.any(
-                    view.model.onDidPanelTitleChange,
-                    view.model.onDidPanelParametersChange
-                )(() => {
-                    this._bufferOnDidLayoutChange.fire();
+                view.model.onDidPanelTitleChange(() => {
+                    this._bufferOnDidLayoutChange.fire(
+                        createLayoutChangeEvent('panelTitle')
+                    );
+                }),
+                view.model.onDidPanelParametersChange(() => {
+                    this._bufferOnDidLayoutChange.fire(
+                        createLayoutChangeEvent('panelParameters')
+                    );
                 })
             );
 

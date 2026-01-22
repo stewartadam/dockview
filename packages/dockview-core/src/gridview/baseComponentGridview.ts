@@ -12,6 +12,75 @@ import { Classnames } from '../dom';
 const nextLayoutId = sequentialNumberGenerator();
 
 /**
+ * The kind of layout change that occurred.
+ *
+ * This allows subscribers to `onDidLayoutChange` to filter which types of changes
+ * they care about. For example, to only react to structural changes and ignore
+ * active panel changes:
+ *
+ * ```typescript
+ * api.onDidLayoutChange((event) => {
+ *   if (!event.kind.has('activePanel')) {
+ *     // Save layout only when something other than active panel changed
+ *     saveLayout();
+ *   }
+ * });
+ * ```
+ */
+export type LayoutChangeKind =
+    | 'addGroup'
+    | 'removeGroup'
+    | 'activeGroup'
+    | 'addPanel'
+    | 'removePanel'
+    | 'activePanel'
+    | 'movePanel'
+    | 'panelTitle'
+    | 'panelParameters'
+    | 'resize'
+    | 'visibility'
+    | 'floatingPosition'
+    | 'popoutPosition'
+    | 'popoutSize';
+
+/**
+ * Event fired when the layout changes.
+ *
+ * The `kind` property is a Set containing all the types of changes that occurred.
+ * Multiple kinds may be present if several changes were batched in the same microtask.
+ */
+export interface LayoutChangeEvent {
+    /**
+     * The set of change kinds that triggered this event.
+     * Use `.has()` to check for specific kinds, e.g., `event.kind.has('activePanel')`.
+     */
+    readonly kind: ReadonlySet<LayoutChangeKind>;
+}
+
+/**
+ * Helper function to merge layout change events by combining their kinds.
+ */
+export function mergeLayoutChangeEvents(
+    existing: LayoutChangeEvent,
+    incoming: LayoutChangeEvent
+): LayoutChangeEvent {
+    const combined = new Set<LayoutChangeKind>(existing.kind);
+    for (const kind of incoming.kind) {
+        combined.add(kind);
+    }
+    return { kind: combined };
+}
+
+/**
+ * Helper function to create a layout change event with the given kind(s).
+ */
+export function createLayoutChangeEvent(
+    ...kinds: LayoutChangeKind[]
+): LayoutChangeEvent {
+    return { kind: new Set(kinds) };
+}
+
+/**
  * A direction in which a panel can be moved or placed relative to another panel.
  */
 export type Direction = 'left' | 'right' | 'above' | 'below' | 'within';
@@ -65,7 +134,13 @@ export interface IBaseGrid<T extends IGridPanelView> extends IDisposable {
     readonly size: number;
     readonly groups: T[];
     readonly onDidMaximizedChange: Event<MaximizedChanged<T>>;
-    readonly onDidLayoutChange: Event<void>;
+    /**
+     * Invoked when any layout change occurs.
+     *
+     * The event contains a `kind` property indicating what type(s) of change occurred,
+     * allowing subscribers to filter which changes they care about.
+     */
+    readonly onDidLayoutChange: Event<LayoutChangeEvent>;
     getPanel(id: string): T | undefined;
     toJSON(): object;
     fromJSON(data: any): void;
@@ -103,8 +178,10 @@ export abstract class BaseGrid<T extends IGridPanelView>
     readonly onDidActiveChange: Event<T | undefined> =
         this._onDidActiveChange.event;
 
-    protected readonly _bufferOnDidLayoutChange = new AsapEvent();
-    readonly onDidLayoutChange: Event<void> =
+    protected readonly _bufferOnDidLayoutChange = new AsapEvent<LayoutChangeEvent>(
+        { merge: mergeLayoutChangeEvents }
+    );
+    readonly onDidLayoutChange: Event<LayoutChangeEvent> =
         this._bufferOnDidLayoutChange.onEvent;
 
     private readonly _onDidViewVisibilityChangeMicroTaskQueue = new AsapEvent();
@@ -200,14 +277,24 @@ export abstract class BaseGrid<T extends IGridPanelView>
                 this.element.parentElement?.removeChild(this.element);
             }),
             this.gridview.onDidChange(() => {
-                this._bufferOnDidLayoutChange.fire();
+                this._bufferOnDidLayoutChange.fire(
+                    createLayoutChangeEvent('resize')
+                );
             }),
-            Event.any(
-                this.onDidAdd,
-                this.onDidRemove,
-                this.onDidActiveChange
-            )(() => {
-                this._bufferOnDidLayoutChange.fire();
+            this.onDidAdd(() => {
+                this._bufferOnDidLayoutChange.fire(
+                    createLayoutChangeEvent('addGroup')
+                );
+            }),
+            this.onDidRemove(() => {
+                this._bufferOnDidLayoutChange.fire(
+                    createLayoutChangeEvent('removeGroup')
+                );
+            }),
+            this.onDidActiveChange(() => {
+                this._bufferOnDidLayoutChange.fire(
+                    createLayoutChangeEvent('activeGroup')
+                );
             }),
             this._onDidMaximizedChange,
             this._onDidViewVisibilityChangeMicroTaskQueue,
@@ -223,7 +310,7 @@ export abstract class BaseGrid<T extends IGridPanelView>
 
     public setVisible(panel: T, visible: boolean): void {
         this.gridview.setViewVisible(getGridLocation(panel.element), visible);
-        this._bufferOnDidLayoutChange.fire();
+        this._bufferOnDidLayoutChange.fire(createLayoutChangeEvent('visibility'));
     }
 
     public isVisible(panel: T): boolean {

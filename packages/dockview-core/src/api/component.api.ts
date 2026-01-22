@@ -7,6 +7,7 @@ import {
     PopoutGroupChangeSizeEvent,
     SerializedDockview,
 } from '../dockview/dockviewComponent';
+import { LayoutChangeEvent } from '../gridview/baseComponentGridview';
 import {
     AddGroupOptions,
     AddPanelOptions,
@@ -63,7 +64,23 @@ import { GridviewComponentOptions } from '../gridview/options';
 export interface CommonApi<T = any> {
     readonly height: number;
     readonly width: number;
-    readonly onDidLayoutChange: Event<void>;
+    /**
+     * Invoked when any layout change occurs.
+     *
+     * The event contains a `kind` property indicating what type(s) of change occurred,
+     * allowing subscribers to filter which changes they care about.
+     *
+     * @example
+     * ```typescript
+     * api.onDidLayoutChange((event) => {
+     *   // Only save layout for structural changes, not active panel changes
+     *   if (!event.kind.has('activePanel') && !event.kind.has('activeGroup')) {
+     *     saveLayout();
+     *   }
+     * });
+     * ```
+     */
+    readonly onDidLayoutChange: Event<LayoutChangeEvent>;
     readonly onDidLayoutFromJSON: Event<void>;
     focus(): void;
     layout(width: number, height: number): void;
@@ -131,9 +148,10 @@ export class SplitviewApi implements CommonApi<SerializedSplitview> {
 
     /**
      * Invoked whenever any aspect of the layout changes.
-     * If listening to this event it may be worth debouncing ouputs.
+     * The event contains a `kind` property indicating what type(s) of change occurred.
+     * If listening to this event it may be worth debouncing outputs.
      */
-    get onDidLayoutChange(): Event<void> {
+    get onDidLayoutChange(): Event<LayoutChangeEvent> {
         return this.component.onDidLayoutChange;
     }
 
@@ -269,14 +287,15 @@ export class PaneviewApi implements CommonApi<SerializedPaneview> {
     }
 
     /**
-     * Invoked when any layout change occures, an aggregation of many events.
+     * Invoked when any layout change occurs, an aggregation of many events.
+     * The event contains a `kind` property indicating what type(s) of change occurred.
      */
-    get onDidLayoutChange(): Event<void> {
+    get onDidLayoutChange(): Event<LayoutChangeEvent> {
         return this.component.onDidLayoutChange;
     }
 
     /**
-     * Invoked after a layout is deserialzied using the `fromJSON` method.
+     * Invoked after a layout is deserialized using the `fromJSON` method.
      */
     get onDidLayoutFromJSON(): Event<void> {
         return this.component.onDidLayoutFromJSON;
@@ -433,9 +452,10 @@ export class GridviewApi implements CommonApi<SerializedGridviewComponent> {
     }
 
     /**
-     * Invoked when any layout change occures, an aggregation of many events.
+     * Invoked when any layout change occurs, an aggregation of many events.
+     * The event contains a `kind` property indicating what type(s) of change occurred.
      */
-    get onDidLayoutChange(): Event<void> {
+    get onDidLayoutChange(): Event<LayoutChangeEvent> {
         return this.component.onDidLayoutChange;
     }
 
@@ -685,9 +705,21 @@ export class DockviewApi implements CommonApi<SerializedDockview> {
     }
 
     /**
-     * Invoked when any layout change occures, an aggregation of many events.
+     * Invoked when any layout change occurs, an aggregation of many events.
+     * The event contains a `kind` property indicating what type(s) of change occurred,
+     * allowing subscribers to filter which changes they care about.
+     *
+     * @example
+     * ```typescript
+     * api.onDidLayoutChange((event) => {
+     *   // Only save layout for structural changes
+     *   if (!event.kind.has('activePanel') && !event.kind.has('activeGroup')) {
+     *     saveLayout();
+     *   }
+     * });
+     * ```
      */
-    get onDidLayoutChange(): Event<void> {
+    get onDidLayoutChange(): Event<LayoutChangeEvent> {
         return this.component.onDidLayoutChange;
     }
 

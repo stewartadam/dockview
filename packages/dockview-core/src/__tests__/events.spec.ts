@@ -124,6 +124,108 @@ describe('events', () => {
             expect(preFireCount).toBe(1);
             expect(postFireCount).toBe(0);
         });
+
+        test('that asapEvents can carry typed values', () => {
+            jest.useFakeTimers();
+
+            const event = new AsapEvent<string>();
+
+            let receivedValue: string | undefined = undefined;
+
+            event.onEvent((value) => {
+                receivedValue = value;
+            });
+
+            event.fire('hello');
+
+            expect(receivedValue).toBeUndefined();
+
+            jest.runAllTimers();
+
+            expect(receivedValue).toBe('hello');
+        });
+
+        test('that last value wins when no merge function is provided', () => {
+            jest.useFakeTimers();
+
+            const event = new AsapEvent<string>();
+
+            let receivedValue: string | undefined = undefined;
+
+            event.onEvent((value) => {
+                receivedValue = value;
+            });
+
+            event.fire('first');
+            event.fire('second');
+            event.fire('third');
+
+            jest.runAllTimers();
+
+            expect(receivedValue).toBe('third');
+        });
+
+        test('that values are merged when merge function is provided', () => {
+            jest.useFakeTimers();
+
+            interface TestEvent {
+                values: string[];
+            }
+
+            const event = new AsapEvent<TestEvent>({
+                merge: (existing, incoming) => ({
+                    values: [...existing.values, ...incoming.values],
+                }),
+            });
+
+            let receivedValue: TestEvent | undefined = undefined;
+
+            event.onEvent((value) => {
+                receivedValue = value;
+            });
+
+            event.fire({ values: ['a'] });
+            event.fire({ values: ['b'] });
+            event.fire({ values: ['c'] });
+
+            jest.runAllTimers();
+
+            expect(receivedValue).toEqual({ values: ['a', 'b', 'c'] });
+        });
+
+        test('that merge function works with Set-based values', () => {
+            jest.useFakeTimers();
+
+            interface ChangeEvent {
+                kinds: Set<string>;
+            }
+
+            const event = new AsapEvent<ChangeEvent>({
+                merge: (existing, incoming) => {
+                    const combined = new Set(existing.kinds);
+                    for (const kind of incoming.kinds) {
+                        combined.add(kind);
+                    }
+                    return { kinds: combined };
+                },
+            });
+
+            let receivedValue: ChangeEvent | undefined = undefined;
+
+            event.onEvent((value) => {
+                receivedValue = value;
+            });
+
+            event.fire({ kinds: new Set(['add']) });
+            event.fire({ kinds: new Set(['remove']) });
+            event.fire({ kinds: new Set(['add']) }); // duplicate should be ignored
+
+            jest.runAllTimers();
+
+            expect(receivedValue?.kinds.has('add')).toBe(true);
+            expect(receivedValue?.kinds.has('remove')).toBe(true);
+            expect(receivedValue?.kinds.size).toBe(2);
+        });
     });
 
     it('should emit a value when any event fires', () => {
