@@ -64,22 +64,6 @@ import { GridviewComponentOptions } from '../gridview/options';
 export interface CommonApi<T = any> {
     readonly height: number;
     readonly width: number;
-    /**
-     * Invoked when any layout change occurs.
-     *
-     * The event contains a `kind` property indicating what type(s) of change occurred,
-     * allowing subscribers to filter which changes they care about.
-     *
-     * @example
-     * ```typescript
-     * api.onDidLayoutChange((event) => {
-     *   // Only save layout for structural changes, not active panel changes
-     *   if (!event.kind.has('activePanel') && !event.kind.has('activeGroup')) {
-     *     saveLayout();
-     *   }
-     * });
-     * ```
-     */
     readonly onDidLayoutChange: Event<LayoutChangeEvent>;
     readonly onDidLayoutFromJSON: Event<void>;
     focus(): void;
